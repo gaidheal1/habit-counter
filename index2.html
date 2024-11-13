@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Counter with Difficulty Levels</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            text-align: center;
+        }
+
+        #counters {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .counter-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .counter-container input, .counter-container select {
+            padding: 5px;
+            margin: 5px;
+            text-align: left;
+        }
+
+        .counter-container input {
+            text-align: right;
+            width: 300px;
+        }
+
+        .counter-container select {
+            width: 80px;
+        }
+
+        .counter {
+            margin: 0 10px;
+            width: 60px;
+        }
+
+        .button {
+            padding: 5px 10px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+
+        #total-counter, #token-counter {
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Multi-Counter with Difficulty Levels and Fun Token System</h1>
+
+<div id="counters">
+    <!-- Counter elements will be dynamically added here -->
+</div>
+
+<button class="button" onclick="addCounter()">Add Counter</button>
+
+<div id="total-counter">Total Sum: 0</div>
+<div id="token-counter">Tokens: 0</div>
+<button class="button" onclick="spendToken()">Spend a Token</button>
+
+<script>
+    let counters = JSON.parse(localStorage.getItem('counters')) || [];
+    let tokens = parseInt(localStorage.getItem('tokens')) || 0;
+
+    function saveToLocalStorage() {
+        localStorage.setItem('counters', JSON.stringify(counters));
+        localStorage.setItem('tokens', tokens);
+    }
+
+    function updateTotal() {
+        let totalSum = counters.reduce((sum, counter) => sum + counter.count, 0);
+        document.getElementById('total-counter').innerText = `Total Sum: ${totalSum}`;
+    }
+
+    function updateTokenDisplay() {
+        document.getElementById('token-counter').innerText = `Tokens: ${tokens}`;
+    }
+
+    function renderCounters() {
+        const countersDiv = document.getElementById('counters');
+        countersDiv.innerHTML = ''; // Clear current counters
+        counters.forEach((counter, index) => {
+            const counterElement = document.createElement('div');
+            counterElement.className = 'counter-container';
+            counterElement.innerHTML = `
+                <button class="button" onclick="moveCounterUp(${index})">Move up</button>
+                <button class="button" onclick="moveCounterDown(${index})">Move down</button>
+                <input type="text" placeholder="Counter name" class="counter-name" value="${counter.name}" onchange="updateCounterName(${index}, this.value)">
+                <select class="difficulty" onchange="updateCounterDifficulty(${index}, this.value)">
+                    <option value="1" ${counter.difficulty === 1 ? 'selected' : ''}>x1</option>
+                    <option value="2" ${counter.difficulty === 2 ? 'selected' : ''}>x2</option>
+                    <option value="3" ${counter.difficulty === 3 ? 'selected' : ''}>x3</option>
+                    <option value="5" ${counter.difficulty === 5 ? 'selected' : ''}>x5</option>
+                    <option value="10" ${counter.difficulty === 10 ? 'selected' : ''}>x10</option>
+                </select>
+                <button class="button" onclick="incrementCounter(${index})">+</button>
+                <span class="counter">${counter.count}</span>
+                <button class="button" onclick="decrementCounter(${index})">-</button>
+                <button class="button" onclick="deleteCounter(${index})">Delete counter</button>
+            `;
+            countersDiv.appendChild(counterElement);
+        });
+        updateTotal();
+        updateTokenDisplay();
+    }
+
+    function addCounter() {
+        const newCounter = {
+            name: '',
+            count: 0,
+            difficulty: 1 // Default difficulty level is 1
+        };
+        counters.push(newCounter);
+        saveToLocalStorage();
+        renderCounters();
+    }
+
+    function updateCounterName(index, newName) {
+        counters[index].name = newName;
+        saveToLocalStorage();
+    }
+
+    function updateCounterDifficulty(index, newDifficulty) {
+        counters[index].difficulty = parseInt(newDifficulty);
+        saveToLocalStorage();
+    }
+
+    function incrementCounter(index) {
+        const difficulty = counters[index].difficulty;
+        const initialCount = counters[index].count;  // Store the initial count value
+        counters[index].count += difficulty;
+
+        // Calculate the number of tokens to award based on how much the counter has increased
+        const incrementAmount = counters[index].count - initialCount;
+        let tokensEarned = Math.floor(counters[index].count / 10) - Math.floor(initialCount / 10);
+
+        // Add the earned tokens
+        tokens += tokensEarned;
+
+        // Update the token display
+        updateTokenDisplay();
+
+        // Save the new counters and tokens to localStorage
+        saveToLocalStorage();
+        
+        // Render the updated counters
+        renderCounters();
+    }
+
+    function decrementCounter(index) {
+        const difficulty = counters[index].difficulty;
+        if (counters[index].count > 0) {
+            counters[index].count = Math.max(0, counters[index].count - difficulty); // Prevent negative counts
+            saveToLocalStorage();
+            renderCounters();
+        }
+    }
+
+    function deleteCounter(index) {
+        counters.splice(index, 1);
+        saveToLocalStorage();
+        renderCounters();
+    }
+
+    function moveCounterUp(index) {
+        if (index > 0) {
+            [counters[index], counters[index - 1]] = [counters[index - 1], counters[index]];
+            saveToLocalStorage();
+            renderCounters();
+        }
+    }
+
+    function moveCounterDown(index) {
+        if (index < counters.length - 1) {
+            [counters[index], counters[index + 1]] = [counters[index + 1], counters[index]];
+            saveToLocalStorage();
+            renderCounters();
+        }
+    }
+
+    function spendToken() {
+        if (tokens > 0) {
+            tokens -= 1;
+            alert("You spent a token on something fun!");
+        } else {
+            alert("No tokens available to spend!");
+        }
+        saveToLocalStorage();
+        updateTokenDisplay();
+    }
+
+    // Initialize the app
+    renderCounters();
+</script>
+
+</body>
+</html>
